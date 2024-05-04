@@ -25,6 +25,7 @@
 import Clutter from 'gi://Clutter';
 import GLib from 'gi://GLib';
 import Gio from 'gi://Gio';
+import Gtk from 'gi://Gtk';
 import Graphene from 'gi://Graphene';
 import GObject from 'gi://GObject';
 import Mtk from 'gi://Mtk';
@@ -646,6 +647,49 @@ export const TaskbarAppIcon = GObject.registerClass({
         this.fake_release();
 
         if (!this._menu) {
+            console.log('we here?');
+            const items = [];
+            // this.recentManager = Gtk.RecentManager.get_default();
+            const testRecent = Gtk.RecentManager.get_default(); // RecentManager
+            console.log('testRecent:', testRecent);
+
+            const recentItems = testRecent.get_items();
+            console.log('recentItems:', recentItems);
+
+            recentItems.forEach(recentItem => {
+                // console.log('x.get_display_name():', recentItem.get_display_name());
+                const mimeType = recentItem.get_mime_type();
+                // console.log('mimeType:', mimeType);
+                const appInfo = Gio.app_info_get_default_for_type(mimeType, false);
+                // console.log('appInfo:', appInfo);
+                // console.log('this.groupState.appInfo:', this.groupState.appInfo);
+                if (appInfo && this._id === appInfo.get_id()) {
+                    console.log('appInfo.get_id():', appInfo.get_id());
+                    // console.log('this._id:', this._id);
+                    // console.log('this._name:', this._name);
+                    items.push(recentItem);
+                    // this._id = app.get_id();
+                    // this._name = app.get_name();
+
+                }
+                // console.log('this.groupState.appId:', this.groupState.appId);
+
+                // if (appInfo && this.groupState.appInfo && appInfo.get_id() === this.groupState.appId) {
+                //     items.push(recentItems[i]);
+                // }
+            })
+
+            console.log('items.length:', items.length);
+
+
+            // for (let i = 0, len = recentItems.length; i < len; i++) {
+            //     const mimeType = recentItems[i].get_mime_type();
+            //     const appInfo = Gio.app_info_get_default_for_type(mimeType, false);
+            //     if (appInfo && this.groupState.appInfo && appInfo.get_id() === this.groupState.appId) {
+            //         items.push(recentItems[i]);
+            //     }
+            // }
+
             this._menu = new TaskbarSecondaryMenu(this, this.dtpPanel.geom.position);
             this._menu.setApp(this.app);
             this._menu.connect('open-state-changed', (menu, isPoppedUp) => {
