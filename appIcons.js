@@ -118,6 +118,7 @@ export const TaskbarAppIcon = GObject.registerClass({
         this._previewMenu = previewMenu;
         this.iconAnimator = iconAnimator;
         this.lastClick = 0;
+        this._recentMenuItems = [];
 
         super._init(appInfo.app, iconParams);
 
@@ -647,49 +648,6 @@ export const TaskbarAppIcon = GObject.registerClass({
         this.fake_release();
 
         if (!this._menu) {
-            console.log('we here?');
-            const items = [];
-            // this.recentManager = Gtk.RecentManager.get_default();
-            const testRecent = Gtk.RecentManager.get_default(); // RecentManager
-            console.log('testRecent:', testRecent);
-
-            const recentItems = testRecent.get_items();
-            console.log('recentItems:', recentItems);
-
-            recentItems.forEach(recentItem => {
-                // console.log('x.get_display_name():', recentItem.get_display_name());
-                const mimeType = recentItem.get_mime_type();
-                // console.log('mimeType:', mimeType);
-                const appInfo = Gio.app_info_get_default_for_type(mimeType, false);
-                // console.log('appInfo:', appInfo);
-                // console.log('this.groupState.appInfo:', this.groupState.appInfo);
-                if (appInfo && this._id === appInfo.get_id()) {
-                    console.log('appInfo.get_id():', appInfo.get_id());
-                    // console.log('this._id:', this._id);
-                    // console.log('this._name:', this._name);
-                    items.push(recentItem);
-                    // this._id = app.get_id();
-                    // this._name = app.get_name();
-
-                }
-                // console.log('this.groupState.appId:', this.groupState.appId);
-
-                // if (appInfo && this.groupState.appInfo && appInfo.get_id() === this.groupState.appId) {
-                //     items.push(recentItems[i]);
-                // }
-            })
-
-            console.log('items.length:', items.length);
-
-
-            // for (let i = 0, len = recentItems.length; i < len; i++) {
-            //     const mimeType = recentItems[i].get_mime_type();
-            //     const appInfo = Gio.app_info_get_default_for_type(mimeType, false);
-            //     if (appInfo && this.groupState.appInfo && appInfo.get_id() === this.groupState.appId) {
-            //         items.push(recentItems[i]);
-            //     }
-            // }
-
             this._menu = new TaskbarSecondaryMenu(this, this.dtpPanel.geom.position);
             this._menu.setApp(this.app);
             this._menu.connect('open-state-changed', (menu, isPoppedUp) => {
@@ -711,6 +669,7 @@ export const TaskbarAppIcon = GObject.registerClass({
             Main.uiGroup.add_child(this._menu.actor);
             this._menuManager.addMenu(this._menu);
         }
+        this.recentMenu();
         this._menu.updateQuitText();
 
         this.emit('menu-state-changed', true);
@@ -721,6 +680,59 @@ export const TaskbarAppIcon = GObject.registerClass({
         this.emit('sync-tooltip');
 
         return false;
+    }
+
+    recentMenu() {
+        // remove items
+        this._recentMenu && this._recentMenu.destroy();
+        // is there a better way to keep track of menu items that are 'recentMenuItems'?
+        // problem I have is the rest of the menu is never recreated after the '1st' time.
+        // so need to keep track of the recent items, so if a document is added/modified
+        // it is added to the list when the user right clicks again, the new docuemnt is in the list.
+        if (this._recentMenuItems.length) {
+            this._recentMenuItems.forEach(x => x.destroy());
+            this._recentMenuItems = [];
+        }
+
+        const items = [];
+        const recentManager = Gtk.RecentManager.get_default();
+        const recentItems = recentManager.get_items().sort((a, b) => {
+            // depending on _recentMenu or _recentMenuItems, might need to sort other way
+            // return b.get_modified().compare(a.get_modified());
+            return a.get_modified().compare(b.get_modified());
+        });
+        recentItems.forEach(recentItem => {
+            const mimeType = recentItem.get_mime_type();
+            const appInfo = Gio.app_info_get_default_for_type(mimeType, false);
+            if (appInfo && this._id === appInfo.get_id()) {
+                items.push(recentItem);
+            }
+        });
+
+        if (items.length) {
+            // this._recentMenu = new PopupMenu.PopupSubMenuMenuItem(_('Recent'));
+            // this._menu.addMenuItem(this._recentMenu, 0);
+            for (let i = 0; i < items.length; i++) {
+                const item = new PopupMenu.PopupMenuItem(_(items[i].get_short_name()));
+                // const item2 = new PopupMenu.PopupMenuItem(_(items[i].get_short_name()));
+
+                item.connect('activate', () => {
+                    const globalContext = global.create_app_launch_context(0, -1);
+                    Gio.app_info_launch_default_for_uri(items[i].get_uri(), globalContext);
+                    // this._displayProperIndicator();
+                });
+
+                // item2.connect('activate', () => {
+                //     const globalContext = global.create_app_launch_context(0, -1);
+                //     Gio.app_info_launch_default_for_uri(items[i].get_uri(), globalContext);
+                // });
+                // this._recentMenu.menu.addMenuItem(item2);
+
+                this._recentMenuItems.push(item);
+                this._menu.addMenuItem(item, 0);
+            }
+            // this._menu.addMenuItem(this._recentMenu);
+        }
     }
 
     _onFocusAppChanged(windowTracker) {
