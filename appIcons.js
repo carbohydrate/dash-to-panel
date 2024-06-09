@@ -684,7 +684,7 @@ export const TaskbarAppIcon = GObject.registerClass({
 
     recentMenu() {
         // remove items
-        this._recentMenu && this._recentMenu.destroy();
+        // this._recentMenu && this._recentMenu.destroy();
         // is there a better way to keep track of menu items that are 'recentMenuItems'?
         // problem I have is the rest of the menu is never recreated after the '1st' time.
         // so need to keep track of the recent items, so if a document is added/modified
@@ -701,11 +701,35 @@ export const TaskbarAppIcon = GObject.registerClass({
             // return b.get_modified().compare(a.get_modified());
             return a.get_modified().compare(b.get_modified());
         });
+        const allApps = Gio.app_info_get_all();
+        console.log('allApps:', allApps);
         recentItems.forEach(recentItem => {
             const mimeType = recentItem.get_mime_type();
             const appInfo = Gio.app_info_get_default_for_type(mimeType, false);
+
+            // const getApplicationInfo = recentItem.get_application_info();
+            // console.log('getApplicationInfo:', getApplicationInfo);
+
+            console.log('recentItem.get_uri_display():', recentItem.get_uri_display());
+            const appInfos2 = Gio.app_info_get_all_for_type(mimeType);
+            appInfos2.forEach(appInfo2 => {
+                console.log('appInfo2.get_id():', appInfo2.get_id());
+            })
+            // console.log('appInfo2:', appInfo2);
+            // const what = recentItem.get_applications();
+            // console.log('what:', what);
+            console.log('this._id:', this._id);
             if (appInfo && this._id === appInfo.get_id()) {
-                items.push(recentItem);
+                // file / location still exists?
+                // (GLib.file_test("/usr/bin/mdmflexiserver", GLib.FileTest.EXISTS)
+                // GLib.file_test();
+                // console.log('recentItem.get_uri():', recentItem.get_uri());
+                // console.log('recentItem.get_uri_display():', recentItem.get_uri_display());
+
+                const exists = GLib.file_test(recentItem.get_uri_display(), GLib.FileTest.EXISTS);
+                if (exists) {
+                    items.push(recentItem);
+                }
             }
         });
 
